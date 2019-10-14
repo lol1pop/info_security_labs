@@ -1,13 +1,8 @@
 package el_gamalya
 
 import (
-	"encoding/binary"
-	"encoding/json"
 	"github.com/lol1pop/info_security_labs/basic"
-	"io"
-	"io/ioutil"
 	"math/rand"
-	"os"
 )
 
 func choicePrimeNumbers() (_, _ uint64) {
@@ -55,13 +50,7 @@ func CreatedCoupleKeys(g, p uint64) (private, public Key) {
 			OSkey: open,
 		}
 }
-func (k *Key) Save(wr io.Writer) error {
-	bytes, err := json.Marshal(*k)
-	if err == nil {
-		_, err = wr.Write(bytes)
-	}
-	return err
-}
+
 func SecretSessionKey(p uint64) uint64 {
 	return basic.RangeRandom(1, p)
 }
@@ -97,29 +86,6 @@ func DecryptMessage(r []uint64, e []uint64, privateKey Key) []byte {
 	return decryptMessage
 }
 
-func EncryptMessageBinary(message []byte, publicKey Key) (r uint64, e []byte) {
-	k := SecretSessionKey(publicKey.P)
-	r = basic.PowByModule(publicKey.G, k, publicKey.P)
-	var encryptBuffer []byte
-	encrypted := make([]byte, 8)
-	for _, m := range message {
-		c := encrypt(m, k, publicKey)
-		binary.LittleEndian.PutUint64(encrypted, c)
-		encryptBuffer = append(encryptBuffer, encrypted...)
-	}
-	return r, encryptBuffer
-}
-
-func DecryptMessageBinary(r uint64, e []byte, key Key) []byte {
-	var decryptMessage []byte
-	for i := 0; i < len(e); i += 8 {
-		g := binary.LittleEndian.Uint64(e[i : i+8])
-		c := decrypt(r, g, key)
-		decryptMessage = append(decryptMessage, byte(c))
-	}
-	return decryptMessage
-}
-
 func StartElGamalya() {
 	g, p := GeneratedPrimeNumbers()
 	private, public := CreatedCoupleKeys(g, p)
@@ -128,18 +94,4 @@ func StartElGamalya() {
 	r, e := EncryptMessage(msg, public)
 	m := DecryptMessage(r, e, private)
 	println(string(m))
-
-	_ = ioutil.WriteFile("el-source.txt", msg, os.ModePerm)
-	//	_ = ioutil.WriteFile("el-encrypt.txt", e, os.ModePerm)
-	//	_ = ioutil.WriteFile("el-decrypt.txt", m , os.ModePerm)
-	save := func(key Key, filename string) error {
-		file, err := os.Create(filename)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		return key.Save(file)
-	}
-	_ = save(public, "public-key.el")
-	_ = save(private, "private-key.el")
 }
