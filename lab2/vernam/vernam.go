@@ -40,11 +40,13 @@ func VernamExample() {
 		log.Printf("Encrypt error: %s", err.Error())
 		return
 	}
+	println(string(enc))
 	dec, err := Decrypt(enc, key)
 	if err != nil {
 		log.Printf("Decrypt error: %s", err.Error())
 		return
 	}
+	println(string(dec))
 	_ = ioutil.WriteFile("vernam-source.txt", src, os.ModePerm)
 	_ = ioutil.WriteFile("vernam-key.txt", key, os.ModePerm)
 	_ = ioutil.WriteFile("vernam-encrypt.txt", enc, os.ModePerm)

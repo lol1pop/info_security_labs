@@ -7,4 +7,6 @@ import (
 func main() {
 	//shamir.StartShamir()
 	el_gamalya.StartElGamalya()
+	//rsa.StartRSA()
+	//vernam.VernamExample()
 }

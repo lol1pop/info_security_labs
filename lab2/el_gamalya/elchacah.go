@@ -55,7 +55,13 @@ func CreatedCoupleKeys(g, p uint64) (private, public Key) {
 			OSkey: open,
 		}
 }
-
+func (k *Key) Save(wr io.Writer) error {
+	bytes, err := json.Marshal(*k)
+	if err == nil {
+		_, err = wr.Write(bytes)
+	}
+	return err
+}
 func SecretSessionKey(p uint64) uint64 {
 	return basic.RangeRandom(1, p)
 }
@@ -122,4 +128,18 @@ func StartElGamalya() {
 	r, e := EncryptMessage(msg, public)
 	m := DecryptMessage(r, e, private)
 	println(string(m))
+
+	_ = ioutil.WriteFile("el-source.txt", msg, os.ModePerm)
+	//	_ = ioutil.WriteFile("el-encrypt.txt", e, os.ModePerm)
+	//	_ = ioutil.WriteFile("el-decrypt.txt", m , os.ModePerm)
+	save := func(key Key, filename string) error {
+		file, err := os.Create(filename)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		return key.Save(file)
+	}
+	_ = save(public, "public-key.el")
+	_ = save(private, "private-key.el")
 }

@@ -56,17 +56,16 @@ func DecryptBuffer(enc []byte, priv *key.PrivateKey) []byte {
 	return result
 }
 
-
 func StartRSA() {
-		private, public, _ := CreateKeys()
-		e := Encrypt(5, public)
-		println("E=", e)
-		m := Decrypt(e, private)
-		println("M'=", m)
-		src := []byte{'t', 'e', 's', 't', '2'}
-		_ = ioutil.WriteFile("source.txt", src, os.ModePerm)
-		enc := EncryptBuffer(src, public)
-		_ = ioutil.WriteFile("encrypted.txt", enc, os.ModePerm)
-		dec := DecryptBuffer(enc, private)
-		_ = ioutil.WriteFile("decrypted.txt", dec, os.ModePerm)
+	private, public, _ := CreateKeys()
+	e := Encrypt(5, public)
+	println("E=", e)
+	m := Decrypt(e, private)
+	println("M'=", m)
+	src := []byte{'t', 'e', 's', 't', '2'}
+	_ = ioutil.WriteFile("rsa-source.txt", src, os.ModePerm)
+	enc := EncryptBuffer(src, public)
+	_ = ioutil.WriteFile("rsa-encrypted.txt", enc, os.ModePerm)
+	dec := DecryptBuffer(enc, private)
+	_ = ioutil.WriteFile("rsa-decrypted.txt", dec, os.ModePerm)
 }
