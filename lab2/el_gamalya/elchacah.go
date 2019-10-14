@@ -2,8 +2,12 @@ package el_gamalya
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"github.com/lol1pop/info_security_labs/basic"
+	"io"
+	"io/ioutil"
 	"math/rand"
+	"os"
 )
 
 func choicePrimeNumbers() (_, _ uint64) {
@@ -32,23 +36,23 @@ func GeneratedPrimeNumbers() (_, _ uint64) {
 }
 
 type Key struct {
-	p   uint64
-	g   uint64
-	key uint64
+	P     uint64
+	G     uint64
+	OSkey uint64
 }
 
 func CreatedCoupleKeys(g, p uint64) (private, public Key) {
 	secret := basic.RangeRandom(1, p-2)
 	open := basic.PowByModule(g, secret, p)
 	return Key{
-			g:   g,
-			p:   p,
-			key: secret,
+			G:     g,
+			P:     p,
+			OSkey: secret,
 		},
 		Key{
-			g:   g,
-			p:   p,
-			key: open,
+			G:     g,
+			P:     p,
+			OSkey: open,
 		}
 }
 
@@ -56,42 +60,44 @@ func SecretSessionKey(p uint64) uint64 {
 	return basic.RangeRandom(1, p)
 }
 
-func EncryptMessage(message []byte, publicKey Key) (r uint64, e []uint64) {
-	k := SecretSessionKey(publicKey.p)
-	r = basic.PowByModule(publicKey.g, k, publicKey.p)
+func EncryptMessage(message []byte, publicKey Key) (rList []uint64, eList []uint64) {
 	var encryptBuffer []uint64
+	var rBuffer []uint64
 	for _, m := range message {
+		k := SecretSessionKey(publicKey.P)
+		r := basic.PowByModule(publicKey.G, k, publicKey.P)
 		c := encrypt(m, k, publicKey)
 		encryptBuffer = append(encryptBuffer, c)
+		rBuffer = append(rBuffer, r)
 	}
-	return r, encryptBuffer
+	return rBuffer, encryptBuffer
 }
 
 func encrypt(m byte, k uint64, publicKey Key) uint64 {
-	return (uint64(m) * basic.PowByModule(publicKey.key, k, publicKey.p)) % publicKey.p
+	return (uint64(m) * basic.PowByModule(publicKey.OSkey, k, publicKey.P)) % publicKey.P
 }
 
 func decrypt(r, e uint64, privateKey Key) uint64 {
-	power := privateKey.p - 1 - privateKey.key
-	return (e * basic.PowByModule(r, power, privateKey.p)) % privateKey.p
+	power := privateKey.P - 1 - privateKey.OSkey
+	return (e * basic.PowByModule(r, power, privateKey.P)) % privateKey.P
 }
 
-func DecryptMessage(r uint64, e []uint64, privateKey Key) []byte {
+func DecryptMessage(r []uint64, e []uint64, privateKey Key) []byte {
 	var decryptMessage []byte
 	for i := 0; i < len(e); i++ {
-		c := decrypt(r, e[i], privateKey)
+		c := decrypt(r[i], e[i], privateKey)
 		decryptMessage = append(decryptMessage, byte(c))
 	}
 	return decryptMessage
 }
 
 func EncryptMessageBinary(message []byte, publicKey Key) (r uint64, e []byte) {
-	k := SecretSessionKey(publicKey.p)
-	r = basic.PowByModule(publicKey.g, k, publicKey.p)
+	k := SecretSessionKey(publicKey.P)
+	r = basic.PowByModule(publicKey.G, k, publicKey.P)
 	var encryptBuffer []byte
 	encrypted := make([]byte, 8)
 	for _, m := range message {
-		c := uint64(m) * basic.PowByModule(publicKey.key, k, publicKey.p)
+		c := encrypt(m, k, publicKey)
 		binary.LittleEndian.PutUint64(encrypted, c)
 		encryptBuffer = append(encryptBuffer, encrypted...)
 	}
