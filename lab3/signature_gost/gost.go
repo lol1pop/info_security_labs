@@ -88,7 +88,7 @@ func SignatureGost(d PublicData, x *big.Int, m string) (_, _ *big.Int) {
 	}
 }
 
-func ChecSignatureGost(r, s *big.Int, m string, d ExchangeData) bool {
+func CheckSignatureGost(r, s *big.Int, m string, d ExchangeData) bool {
 	h := new(big.Int).SetBytes(sha1.New().Sum([]byte(m)))
 	invers_h := new(big.Int).ModInverse(h, d.Data.Q) //??????????
 	println(invers_h.Text(10))
@@ -191,7 +191,7 @@ func StartGost() {
 	//m := "hello"
 	//r,s := SignatureGost(pubData, pivA, m)
 	/* ==  Bob  == */
-	//check := ChecSignatureGost(r,s,m, data)
+	//check := CheckSignatureGost(r,s,m, data)
 	//println(check)
 
 }
