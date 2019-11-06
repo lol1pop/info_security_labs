@@ -1,13 +1,11 @@
 package main
 
-import (
-	"github.com/lol1pop/info_security_labs/lab3/signature_el_gam"
-)
+import "github.com/lol1pop/info_security_labs/lab3/signature_gost"
 
 func main() {
 	//** lab 3 **
-	signature_el_gam.StartElGamale()
-	//signature_gost.StartGost()
+	//signature_el_gam.StartElGamale()
+	signature_gost.StartGost()
 
 	//** lab 2 **
 	//shamir.StartShamir()

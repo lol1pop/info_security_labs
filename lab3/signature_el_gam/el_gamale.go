@@ -6,7 +6,7 @@ import (
 	"math/big"
 )
 
-const NUM_BIT = 32
+const NUM_BIT = 256
 
 type PubKeys struct {
 	Y *big.Int
@@ -77,13 +77,12 @@ func SignatureHash(m string) *big.Int {
 
 func SignatureElGamale(p, g, x *big.Int, m string) (r, s *big.Int) {
 	h := SignatureHash(m)
-	h = big.NewInt(4) //TODO()
 	println("h ", h.Text(10))
 	p_1 := new(big.Int).Sub(p, big.NewInt(1))
 	var k *big.Int
 	var err error
 
-	for { //Проблема алгоритма в числе k  TODO()
+	for {
 		k, err = rand.Int(rand.Reader, p_1)
 		if err != nil {
 			panic(err)
@@ -96,7 +95,7 @@ func SignatureElGamale(p, g, x *big.Int, m string) (r, s *big.Int) {
 		}
 	}
 	inverseK := new(big.Int).ModInverse(k, p_1)
-	println("  -->", inverseK.Text(10))
+	//println("  -->", inverseK.Text(10))
 
 	r = new(big.Int).Exp(g, k, p)
 	xr := new(big.Int).Mul(x, r)
@@ -109,10 +108,9 @@ func SignatureElGamale(p, g, x *big.Int, m string) (r, s *big.Int) {
 
 func CheckSignatureElGamale(d PubData) bool {
 	h := SignatureHash(d.Sm)
-	h = big.NewInt(4) //TODO()
 	yR := new(big.Int).Exp(d.Key.Y, d.Key.R, d.P)
 	rS := new(big.Int).Exp(d.Key.R, d.Key.S, d.P)
-	c1 := new(big.Int).Mul(yR, rS)
+	c1 := new(big.Int).Mod(new(big.Int).Mul(yR, rS), d.P)
 	c2 := new(big.Int).Exp(d.G, h, d.P)
 	return c1.Cmp(c2) == 0
 }
@@ -120,14 +118,10 @@ func CheckSignatureElGamale(d PubData) bool {
 func StartElGamale() {
 	m := "4"
 	p, _, g := initParams()
-	p = big.NewInt(23)
-	g = big.NewInt(5)
 	println("p ", p.Text(10))
 	println("g ", g.Text(10))
 	x := CreatedPrivateKey(p)
 	y := CreatedPublicKey(p, g, x)
-	x = big.NewInt(4)
-	y = big.NewInt(4)
 	println("x ", x.Text(10))
 	println("y ", y.Text(10))
 	r, s := SignatureElGamale(p, g, x, m)
