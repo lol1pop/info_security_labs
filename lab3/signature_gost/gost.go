@@ -2,23 +2,27 @@ package signature_gost
 
 import (
 	"crypto/rand"
-	"crypto/sha1"
+	"encoding/json"
+	"github.com/lol1pop/info_security_labs/basic"
+	"io/ioutil"
 	"math/big"
+	"os"
 )
 
-const Q_BIT = 15
-const B_BIT = 16
-const P_BIT = 30
+const Q_BIT = 256
+const P_BIT = 1024
 
 type PublicData struct {
-	P *big.Int
-	Q *big.Int
-	A *big.Int
+	P *big.Int `json:"p"`
+	Q *big.Int `json:"q"`
+	A *big.Int `json:"a"`
 }
 
 type ExchangeData struct {
-	Data      PublicData
-	PublicKey *big.Int
+	Data      PublicData `json:"data"`
+	PublicKey *big.Int   `json:"public_key"`
+	R         *big.Int   `json:"r"`
+	S         *big.Int   `json:"s"`
 }
 
 func create_param_a(b, q, p *big.Int) (a *big.Int) {
@@ -32,11 +36,10 @@ func create_param_a(b, q, p *big.Int) (a *big.Int) {
 }
 
 func find_p_via_rand(q *big.Int) (_, _ *big.Int) {
-	max := new(big.Int)
-	max.Exp(big.NewInt(2), big.NewInt(B_BIT), nil)
+	max := new(big.Int).Exp(big.NewInt(2), big.NewInt(P_BIT-Q_BIT), nil)
 	for {
 		b, _ := rand.Int(rand.Reader, max)
-		p := b.Mul(b, q).Add(b, big.NewInt(1))
+		p := new(big.Int).Add(new(big.Int).Mul(b, q), big.NewInt(1))
 		if p.ProbablyPrime(50) {
 			return p, b
 		}
@@ -72,15 +75,16 @@ func InitParams() PublicData {
 	if err != nil {
 		panic(err)
 	}
-	p, b := find_p(q)
+	p, b := find_p_via_rand(q)
 	a := create_param_a(b, q, p)
+	println("A=", new(big.Int).Exp(a, q, p).String())
 	return PublicData{p, q, a}
 }
 
-func SignatureGost(d PublicData, x *big.Int, m string) (_, _ *big.Int) {
+func SignatureGost(d PublicData, x *big.Int, m []byte) (_, _ *big.Int) {
 	//h =H(m) + [0 < h < q]
 	var k, r, s, h *big.Int
-	h = new(big.Int).SetBytes(sha1.New().Sum([]byte(m)))
+	h = basic.GetMessageHash(m)
 	for {
 		k, _ = rand.Int(rand.Reader, d.Q)
 		r = new(big.Int).Exp(d.A, k, d.P)
@@ -103,17 +107,16 @@ func SignatureGost(d PublicData, x *big.Int, m string) (_, _ *big.Int) {
 	}
 }
 
-func CheckSignatureGost(r, s *big.Int, m string, d ExchangeData) bool {
-	h := new(big.Int).SetBytes(sha1.New().Sum([]byte(m)))
-	iH := new(big.Int).ModInverse(h, d.Data.Q) //??????????
-	println(iH.Text(10))
+func CheckSignatureGost(m []byte, d ExchangeData) bool {
+	h := basic.GetMessageHash(m)
+	iH := new(big.Int).ModInverse(h, d.Data.Q)
 
-	u1 := new(big.Int).Mod(new(big.Int).Mul(s, iH), d.Data.Q)
-	u2 := new(big.Int).Mod(new(big.Int).Mul(new(big.Int).Neg(r), iH), d.Data.Q)
+	u1 := new(big.Int).Mod(new(big.Int).Mul(d.S, iH), d.Data.Q)
+	u2 := new(big.Int).Mod(new(big.Int).Mul(new(big.Int).Neg(d.R), iH), d.Data.Q)
 	au1 := new(big.Int).Exp(d.Data.A, u1, d.Data.P)
 	yu2 := new(big.Int).Exp(d.PublicKey, u2, d.Data.P)
 	v := new(big.Int).Mod(new(big.Int).Mod(new(big.Int).Mul(au1, yu2), d.Data.P), d.Data.Q)
-	return v.Cmp(r) == 0
+	return v.Cmp(d.R) == 0
 }
 
 func StartGost() {
@@ -122,15 +125,31 @@ func StartGost() {
 	println(" ======= \nQ ", pubData.Q.Text(10))
 	println("P ", pubData.P.Text(10))
 	println("A ", pubData.A.Text(10), " \n ======= ")
-	m := "hello"
+	m := "test message"
+	_ = ioutil.WriteFile("GostSign.txt", []byte(m), os.ModePerm)
+	fsrc, _ := ioutil.ReadFile("GostSign.txt")
+	println(string(fsrc))
 	pubA, pivA := CreatePublicPrivateKey(pubData)
 	println("k1 ", pubA.Text(10))
 	println("K2 ", pivA.Text(10))
-	r, s := SignatureGost(pubData, pivA, m)
+	r, s := SignatureGost(pubData, pivA, fsrc)
 	println("r ", r.Text(10))
 	println("s ", s.Text(10))
-	data := ExchangeData{pubData, pubA}
-	check := CheckSignatureGost(r, s, m, data)
-	println(check)
+	toJson := func(any interface{}) []byte {
+		bytes, _ := json.Marshal(any)
+		return bytes
+	}
+	data := ExchangeData{pubData, pubA, r, s}
+	_ = ioutil.WriteFile("GostSign-sing.txt", toJson(data), os.ModePerm)
+	_ = ioutil.WriteFile("GostSign-private.txt", toJson(pivA), os.ModePerm)
+	println("Check result: ", CheckSignatureGost(fsrc, data))
+	CheckSignFile()
+}
 
+func CheckSignFile() {
+	fsrc, _ := ioutil.ReadFile("GostSign.txt")
+	src, _ := ioutil.ReadFile("GostSign-sing.txt")
+	var data ExchangeData
+	_ = json.Unmarshal(src, &data)
+	println("Check result: ", CheckSignatureGost(fsrc, data))
 }

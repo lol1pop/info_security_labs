@@ -1,6 +1,9 @@
 package basic
 
-import "math/big"
+import (
+	"crypto/sha1"
+	"math/big"
+)
 
 func BigFastPowByModule(a, x, p *big.Int) *big.Int {
 	r := big.NewInt(1)
@@ -15,4 +18,9 @@ func BigFastPowByModule(a, x, p *big.Int) *big.Int {
 		//println( "(a):"+ a.Text(10))
 	}
 	return r
+}
+
+func GetMessageHash(m []byte) *big.Int {
+	hash := sha1.Sum(m)
+	return new(big.Int).SetBytes(hash[:])
 }
