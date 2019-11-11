@@ -200,6 +200,35 @@ func PlayersDecryptHandDeck(players *[]Player) {
 	}
 }
 
+func DecryptTableCart(players []Player, cart *big.Int) *big.Int {
+	for _, player := range players {
+		cart = player.DecryptCart(cart)
+	}
+	return cart
+}
+
+func DecryptTableCarts(players []Player, deck *[]*big.Int, n int) []*big.Int {
+	var carts []*big.Int
+	for i := 0; i < n; i++ {
+		num := len(*deck) - 1 - i
+		carts = append(carts, DecryptTableCart(players, (*deck)[i]))
+		*deck = (*deck)[:num]
+	}
+	return carts
+}
+
+func ShowCardsTable(players []Player, deck *[]*big.Int, n int) {
+	println("Carts on table : ")
+	var show []string
+	carts := DecryptTableCarts(players, deck, n)
+	for _, c := range carts {
+		cart := cartsdeck[c.Int64()]
+		show = append(show, cart)
+		print(cart, " ")
+	}
+	println()
+}
+
 func StartPoker() {
 	nP := 3
 	nC := 4
@@ -217,11 +246,13 @@ func StartPoker() {
 	PlayersDecryptHandDeck(&players)
 	fmt.Println(players)
 
-	println("Deck: ", nP, " players, rule allot by", nC, " carts")
+	println("Desk: ", nP, " players, rule allot by", nC, " carts")
+	println("Deсk: ", len(cartsdeck), " carts")
 	for _, player := range players {
 		println("Player#", player.Number, " on hand:")
 		for _, c := range player.OnHand {
 			println("  -->" + c)
 		}
 	}
+	ShowCardsTable(players, &encryptDeck, 5)
 }
