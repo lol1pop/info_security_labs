@@ -151,9 +151,9 @@ func StartPoker() {
 	encryptDeck := EncryptDeckAllPlayers(players, arr)
 	fmt.Println(players)
 	fmt.Println(encryptDeck)
-	ps, ed := allotCartsPlayers(players, encryptDeck, 4)
-	fmt.Println(ps)
-	fmt.Println(ed)
+	allotCartsPlayers(&players, &encryptDeck, 4)
+	fmt.Println(players)
+	fmt.Println(encryptDeck)
 
 }
 
@@ -167,8 +167,7 @@ func GeneratedPlayers(p *big.Int, n int) []Player {
 	return players
 }
 
-func EncryptDeckAllPlayers(players []Player, deck []*big.Int) []*big.Int {
-	encrypt := deck
+func EncryptDeckAllPlayers(players []Player, encrypt []*big.Int) []*big.Int {
 	for i, player := range players {
 		encrypt = player.EncryptCartDeck(encrypt)
 		fmt.Println("Encrypt player N", i, ": ", encrypt)
@@ -176,25 +175,23 @@ func EncryptDeckAllPlayers(players []Player, deck []*big.Int) []*big.Int {
 	return encrypt
 }
 
-func allotCart(player Player, deck []*big.Int) (_ Player, _ []*big.Int) {
-	num := len(deck) - 1
+func allotCart(player *Player, deck *[]*big.Int) {
+	num := len(*deck) - 1
 	if num < 0 {
 		fmt.Println()
-		return player, deck
+		return
 	}
-	catr := deck[num]
-	player.OnHandEncrypt = append(player.OnHandEncrypt, catr)
-	deck_split := deck[:len(deck)-1]
-	fmt.Println(catr.String())
-	return player, deck_split
+	cart := (*deck)[num]
+	player.OnHandEncrypt = append(player.OnHandEncrypt, cart)
+	*deck = (*deck)[:num]
+	fmt.Println(cart.String())
 }
 
-func allotCartsPlayers(players []Player, deck []*big.Int, n int) (_ []Player, _ []*big.Int) {
+func allotCartsPlayers(players *[]Player, deck *[]*big.Int, n int) {
 	for i := 0; i < n; i++ {
-		for j, player := range players {
+		for j, _ := range *players {
 			fmt.Print("get catr player N", j, ": ")
-			player, deck = allotCart(player, deck)
+			allotCart(&(*players)[j], deck)
 		}
 	}
-	return players, deck
 }
