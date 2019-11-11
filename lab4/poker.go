@@ -17,8 +17,10 @@ var ZERO = big.NewInt(0)
 
 var suit = []string{"♣", "♠", "♥", "♦"}
 var high = []string{"J", "Q", "K", "A"}
+var cartsdeck []string
 
 type Player struct {
+	Number        int
 	P             *big.Int
 	Ci            *big.Int
 	Di            *big.Int
@@ -59,9 +61,9 @@ func GeneratedKey(p *big.Int) (Ci, Di *big.Int) {
 
 }
 
-func ConnectPlayer(p *big.Int) Player {
+func ConnectPlayer(p *big.Int, num int) Player {
 	Ci, Di := GeneratedKey(p)
-	return Player{P: p, Ci: Ci, Di: Di}
+	return Player{Number: num, P: p, Ci: Ci, Di: Di}
 }
 
 func Shuffle(arr []*big.Int) []*big.Int {
@@ -87,6 +89,37 @@ func (p *Player) EncryptCartDeck(cart_deck []*big.Int) []*big.Int {
 		encrypt_arr = append(encrypt_arr, encrypt)
 	}
 	return Shuffle(encrypt_arr)
+}
+
+func (p *Player) DecryptCartDeck(cart_deck []*big.Int) []*big.Int {
+	var decrypt_arr []*big.Int
+	for _, k := range cart_deck {
+		decrypt := new(big.Int).Exp(k, p.Di, p.P)
+		decrypt_arr = append(decrypt_arr, decrypt)
+	}
+	return decrypt_arr
+}
+
+func (p *Player) DecryptHandDeck(players []Player) {
+	for _, player := range players {
+		if player.Number == p.Number {
+			continue
+		}
+		fmt.Print("player N", p.Number, " decrypt carts by N", player.Number, ":")
+		p.OnHandEncrypt = player.DecryptCartDeck(p.OnHandEncrypt)
+		fmt.Println(p.OnHandEncrypt)
+	}
+	p.OnHandDecrypt = p.DecryptCartDeck(p.OnHandEncrypt)
+	p.OnHandEncrypt = p.OnHandEncrypt[:0]
+	fmt.Println("self decrypt:", p.OnHandDecrypt)
+}
+
+func (p *Player) AssociatedNumCartShirt() {
+	for _, c := range p.OnHandDecrypt {
+		cart := cartsdeck[c.Int64()]
+		p.OnHand = append(p.OnHand, cart)
+	}
+	fmt.Println("player N", p.Number, " have Carts on hand:", p.OnHand)
 }
 
 func InitDeck(poker bool) (cart_deck []string) {
@@ -117,50 +150,10 @@ func AssociatedBigIntArr(len int) []*big.Int {
 	return big_arr
 }
 
-func StartPoker() {
-	p, q := InitParams()
-	println("========🃑\n P:", p.String(), "\n Q:", q.String(), "\n========🃑\n")
-	arr := Shuffle([]*big.Int{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4), big.NewInt(5)})
-
-	Alisa := ConnectPlayer(p)
-	fmt.Println("Alisa:", Alisa)
-	Bob := ConnectPlayer(p)
-	fmt.Println("Bob:", Bob)
-	Eva := ConnectPlayer(p)
-	fmt.Println("Eva:", Eva)
-
-	cart := big.NewInt(5)
-	fmt.Println("cart: ", cart.String())
-	cart = Alisa.EncryptCart(cart)
-	fmt.Println("Alisa encrypt:", cart.String())
-	cart = Bob.EncryptCart(cart)
-	fmt.Println("Bob encrypt:", cart.String())
-	cart = Eva.EncryptCart(cart)
-	fmt.Println("Eva encrypt:", cart.String())
-	cart = Alisa.DecryptCart(cart)
-	fmt.Println("Alisa Decrypt:", cart.String())
-	cart = Eva.DecryptCart(cart)
-	fmt.Println("Eva Decrypt:", cart.String())
-	cart = Bob.DecryptCart(cart)
-	fmt.Println("Bob Decrypt:", cart.String())
-
-	//deck := InitDeck(true)
-	fmt.Println(arr)
-	//ass_arr := AssociatedBigIntArr(len(deck))
-	players := GeneratedPlayers(p, 3)
-	encryptDeck := EncryptDeckAllPlayers(players, arr)
-	fmt.Println(players)
-	fmt.Println(encryptDeck)
-	allotCartsPlayers(&players, &encryptDeck, 4)
-	fmt.Println(players)
-	fmt.Println(encryptDeck)
-
-}
-
 func GeneratedPlayers(p *big.Int, n int) []Player {
 	var players []Player
 	for i := 0; i < n; i++ {
-		player := ConnectPlayer(p)
+		player := ConnectPlayer(p, i)
 		players = append(players, player)
 		fmt.Println("player N", i, ": ", player)
 	}
@@ -190,8 +183,45 @@ func allotCart(player *Player, deck *[]*big.Int) {
 func allotCartsPlayers(players *[]Player, deck *[]*big.Int, n int) {
 	for i := 0; i < n; i++ {
 		for j, _ := range *players {
+			if len(*deck)-1 < 0 {
+				fmt.Println()
+				return
+			}
 			fmt.Print("get catr player N", j, ": ")
 			allotCart(&(*players)[j], deck)
+		}
+	}
+}
+
+func PlayersDecryptHandDeck(players *[]Player) {
+	for j, _ := range *players {
+		(*players)[j].DecryptHandDeck(*players)
+		(*players)[j].AssociatedNumCartShirt()
+	}
+}
+
+func StartPoker() {
+	nP := 3
+	nC := 4
+	p, q := InitParams()
+	fmt.Println("========🃑\n P:", p.String(), "\n Q:", q.String(), "\n========🃑\n")
+	cartsdeck = InitDeck(true)
+	ass_arr := AssociatedBigIntArr(len(cartsdeck))
+	players := GeneratedPlayers(p, nP)
+	encryptDeck := EncryptDeckAllPlayers(players, ass_arr)
+	fmt.Println(players)
+	fmt.Println(encryptDeck)
+	allotCartsPlayers(&players, &encryptDeck, nC)
+	fmt.Println(players)
+	fmt.Println(encryptDeck)
+	PlayersDecryptHandDeck(&players)
+	fmt.Println(players)
+
+	println("Deck: ", nP, " players, rule allot by", nC, " carts")
+	for _, player := range players {
+		println("Player#", player.Number, " on hand:")
+		for _, c := range player.OnHand {
+			println("  -->" + c)
 		}
 	}
 }
