@@ -1,6 +1,6 @@
 package main
 
-import "github.com/lol1pop/info_security_labs/lab4"
+import poker "github.com/lol1pop/info_security_labs/lab4"
 
 func main() {
 	/** lab 4 **/

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const Q_BIT = 16
+const Q_BIT = 8
 
 var ONE = big.NewInt(1)
 var TOW = big.NewInt(2)
@@ -22,18 +22,22 @@ type Player struct {
 	P             *big.Int
 	Ci            *big.Int
 	Di            *big.Int
-	onHand        []string
-	onHandEncrypt []*big.Int
-	onHandDecrypt []*big.Int
+	OnHand        []string
+	OnHandEncrypt []*big.Int
+	OnHandDecrypt []*big.Int
 }
 
 func InitParams() (_, _ *big.Int) {
-	q, err := rand.Prime(rand.Reader, Q_BIT)
-	if err != nil {
-		panic(err)
+	for {
+		q, err := rand.Prime(rand.Reader, Q_BIT)
+		if err != nil {
+			panic(err)
+		}
+		p := new(big.Int).Add(new(big.Int).Mul(q, TOW), ONE)
+		if p.ProbablyPrime(50) {
+			return p, q
+		}
 	}
-	p := new(big.Int).Add(new(big.Int).Mul(q, TOW), ONE)
-	return p, q
 }
 
 func GeneratedKey(p *big.Int) (Ci, Di *big.Int) {
@@ -41,7 +45,8 @@ func GeneratedKey(p *big.Int) (Ci, Di *big.Int) {
 	for {
 		for {
 			Di, _ = rand.Int(rand.Reader, p_1)
-			if new(big.Int).GCD(nil, nil, Di, p_1).Cmp(ONE) == 0 {
+			check := new(big.Int).GCD(nil, nil, Di, p_1)
+			if check.Cmp(ONE) == 0 {
 				break
 			}
 		}
@@ -56,7 +61,7 @@ func GeneratedKey(p *big.Int) (Ci, Di *big.Int) {
 
 func ConnectPlayer(p *big.Int) Player {
 	Ci, Di := GeneratedKey(p)
-	return Player{P: p, Ci: Ci, Di: Di, onHand: []string{}}
+	return Player{P: p, Ci: Ci, Di: Di}
 }
 
 func Shuffle(arr []*big.Int) []*big.Int {
@@ -115,5 +120,74 @@ func AssociatedBigIntArr(len int) []*big.Int {
 func StartPoker() {
 	p, q := InitParams()
 	println("========🃑\n P:", p.String(), "\n Q:", q.String(), "\n========🃑\n")
-	fmt.Println(Shuffle([]*big.Int{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4), big.NewInt(5)}))
+	arr := Shuffle([]*big.Int{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4), big.NewInt(5)})
+
+	Alisa := ConnectPlayer(p)
+	fmt.Println("Alisa:", Alisa)
+	Bob := ConnectPlayer(p)
+	fmt.Println("Bob:", Bob)
+	Eva := ConnectPlayer(p)
+	fmt.Println("Eva:", Eva)
+
+	cart := big.NewInt(5)
+	println("cart: ", cart.String())
+	cart = Alisa.EncryptCart(cart)
+	println("Alisa encrypt:", cart.String())
+	cart = Bob.EncryptCart(cart)
+	println("Bob encrypt:", cart.String())
+	cart = Eva.EncryptCart(cart)
+	println("Eva encrypt:", cart.String())
+	cart = Alisa.DecryptCart(cart)
+	println("Alisa Decrypt:", cart.String())
+	cart = Eva.DecryptCart(cart)
+	println("Eva Decrypt:", cart.String())
+	cart = Bob.DecryptCart(cart)
+	println("Bob Decrypt:", cart.String())
+
+	//deck := InitDeck(true)
+	fmt.Println(arr)
+	//ass_arr := AssociatedBigIntArr(len(deck))
+	players := GeneratedPlayers(p, 3)
+	encryptDeck := EncryptDeckAllPlayers(players, arr)
+	ps, ed := getCartsPlayers(players, encryptDeck, 4)
+	fmt.Println(ps)
+	fmt.Println(ed)
+
+}
+
+func GeneratedPlayers(p *big.Int, n int) []Player {
+	var players []Player
+	for i := 0; i < n; i++ {
+		player := ConnectPlayer(p)
+		players = append(players, player)
+		fmt.Println("player N", i, ": ", player)
+	}
+	return players
+}
+
+func EncryptDeckAllPlayers(players []Player, deck []*big.Int) []*big.Int {
+	encrypt := deck
+	for i, player := range players {
+		encrypt = player.EncryptCartDeck(encrypt)
+		fmt.Println("Encrypt player N", i, ": ", encrypt)
+	}
+	return encrypt
+}
+
+func getCart(player Player, deck []*big.Int) (_ Player, _ []*big.Int) {
+	catr := deck[len(deck)-1]
+	_ = append(player.OnHandEncrypt, catr)
+	deck_split := deck[:len(deck)-1]
+	println(catr.String())
+	return player, deck_split
+}
+
+func getCartsPlayers(players []Player, deck []*big.Int, n int) (_ []Player, _ []*big.Int) {
+	for i := 0; i < n; i++ {
+		for j, player := range players {
+			print("get catr player N", j, ": ")
+			player, deck = getCart(player, deck)
+		}
+	}
+	return
 }
