@@ -211,7 +211,7 @@ func DecryptTableCarts(players []Player, deck *[]*big.Int, n int) []*big.Int {
 	var carts []*big.Int
 	for i := 0; i < n; i++ {
 		num := len(*deck) - 1 - i
-		carts = append(carts, DecryptTableCart(players, (*deck)[i]))
+		carts = append(carts, DecryptTableCart(players, (*deck)[num]))
 		*deck = (*deck)[:num]
 	}
 	return carts
@@ -255,4 +255,5 @@ func StartPoker() {
 		}
 	}
 	ShowCardsTable(players, &encryptDeck, 5)
+	ShowCardsTable(players, &encryptDeck, 2)
 }
