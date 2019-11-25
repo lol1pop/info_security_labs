@@ -7,7 +7,16 @@ import (
 	"math/big"
 )
 
-func InitUser(name string, vote int64, key *key.PublicKey) *big.Int {
+type Client struct {
+	PublicKey *key.PublicKey
+}
+
+type Voter struct {
+	Name string
+	Vote int64
+}
+
+func (c *Client) InitVote(name string, vote int64) *big.Int {
 	max := new(big.Int).Exp(big.NewInt(2), big.NewInt(512), nil)
 	rnd, _ := rand.Int(rand.Reader, max)
 	v := big.NewInt(vote)
@@ -21,12 +30,12 @@ func InitUser(name string, vote int64, key *key.PublicKey) *big.Int {
 				return r
 			}
 		}
-	}(key.N)
+	}(c.PublicKey.N)
 
 	h := basic.GetMessageHash([]byte(n.String()))
 
 	vH := func(h, r, n *big.Int) *big.Int {
-		return new(big.Int).Mod(new(big.Int).Mul(h, new(big.Int).Exp(r, 1, n)), n)
+		return new(big.Int).Mod(new(big.Int).Mul(h, new(big.Int).Exp(r, c.PublicKey.D, n)), n)
 	}(h, r, n)
 
 	return vH
