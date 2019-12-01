@@ -6,6 +6,8 @@ import (
 	"math/big"
 )
 
+const RSAbits int = 32
+
 type PrivateKey struct {
 	N *big.Int `json:"n"`
 	C *big.Int `json:"c"`
@@ -14,16 +16,16 @@ type PrivateKey struct {
 
 func CreatePrivate() *PrivateKey {
 	p, q, err := func() (*big.Int, *big.Int, error) {
-		q, err := rand.Prime(rand.Reader, 1024)
+		q, err := rand.Prime(rand.Reader, RSAbits)
 		if err != nil {
 			return nil, nil, err
 		}
-		p, err := rand.Prime(rand.Reader, 1024)
+		p, err := rand.Prime(rand.Reader, RSAbits)
 		if err != nil {
 			return nil, nil, err
 		}
 		for q.Cmp(p) == 0 {
-			p, _ = rand.Prime(rand.Reader, 1024)
+			p, _ = rand.Prime(rand.Reader, RSAbits)
 		}
 		return p, q, nil
 	}()
