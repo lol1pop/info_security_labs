@@ -22,7 +22,7 @@ func (s Server) toPrintKeys() {
 }
 
 func (s *Server) InitServer() *Server {
-	println("=== RSA ===")
+	println("")
 	private, public := signature_rsa.CreateKeys()
 	s.privateKey, s.PublicKey = private, public
 	s.voterSlice = []*big.Int{}
@@ -42,7 +42,6 @@ func (s Server) NewClient() client.Client {
 
 func (s Server) CheckVote(vN, vS *big.Int) bool {
 	h := basic.GetMessageHash([]byte(vN.String()))
-	println("h  " + h.String())
 	sign := new(big.Int).Exp(vS, s.PublicKey.D, s.PublicKey.N)
 	println("s  " + sign.String())
 	if h.Cmp(sign) == 0 {
