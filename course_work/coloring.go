@@ -5,6 +5,7 @@ import (
 	"github.com/lol1pop/info_security_labs/lab3/signature_rsa"
 	"math/big"
 	rand_math "math/rand"
+	"strconv"
 	"time"
 )
 
@@ -80,6 +81,13 @@ func getRandomEdge(arr []int) int {
 	//arr[:len(arr) - 1]
 }
 
+func getRandEdge(arr *[]int) int {
+	edges := Shuffle(*arr)
+	edge := edges[0]
+	*arr = edges[1:]
+	return edge
+}
+
 func getColorFromR(r *big.Int) int {
 	checkTen := new(big.Int).And(r, new(big.Int).Lsh(big.NewInt(1), 1)).Uint64()
 	checkOne := new(big.Int).And(r, new(big.Int).Lsh(big.NewInt(1), 0)).Uint64()
@@ -98,7 +106,7 @@ func checkColors(encryptNodes [][]EncryptNode, edge int, c1 *big.Int, c2 *big.In
 	u := encryptNodes[edge]
 	u1 := u[0]
 	IZu1 := new(big.Int).Exp(u1.Z, c1, u1.N)
-	u2 := u[0]
+	u2 := u[1]
 	IZu2 := new(big.Int).Exp(u2.Z, c2, u2.N)
 	color1 := getColorFromR(IZu1)
 	color2 := getColorFromR(IZu2)
@@ -206,7 +214,15 @@ func Start() {
 	generatedR(&graph, Shuffle(colorArr))
 	encryptRsaNode(&graph)
 	encryptNodes := CreatedZu(&graph)
-	edge := getRandomEdge([]int{0, 1, 2, 3, 4, 5, 6})
-	c1, c2 := getDecryptKey(graph, edge)
-	checkColors(encryptNodes, edge, c1, c2)
+	//edge := getRandomEdge([]int{0, 1, 2, 3, 4, 5, 6})
+	//c1, c2 := getDecryptKey(graph, edge)
+	//checkColors(encryptNodes, edge, c1, c2)
+
+	edgeArr := []int{0, 1, 2, 3, 4, 5, 6}
+	for len(edgeArr) > 0 {
+		edge := getRandEdge(&edgeArr)
+		print("[" + strconv.Itoa(edge) + "]: ")
+		c1, c2 := getDecryptKey(graph, edge)
+		checkColors(encryptNodes, edge, c1, c2)
+	}
 }
