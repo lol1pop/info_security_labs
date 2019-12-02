@@ -2,14 +2,15 @@ package course
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"github.com/lol1pop/info_security_labs/lab3/signature_rsa"
+	"io/ioutil"
 	"math/big"
 	rand_math "math/rand"
+	"os"
 	"strconv"
 	"time"
 )
-
-// ============== func Alisa ================
 
 func Shuffle(arr []int) []int {
 	rand_math.Seed(time.Now().UnixNano())
@@ -33,35 +34,59 @@ func PlanColorBit(c *big.Int, color int) *big.Int {
 	return new(big.Int).Or(c, new(big.Int).Lsh(big.NewInt(1), 0))
 }
 
-func generatedR(graph *[][]Node, colorArr []int) {
-	for i := 0; i < len(*graph); i++ {
-		for j := 0; j < len((*graph)[i]); j++ {
-			color := colorArr[(*graph)[i][j].Color]
+type Sender struct {
+	graph  [][]Node
+	colors []int
+}
+
+func (s *Sender) init() *Sender {
+	gr, _ := ioutil.ReadFile("graph.json")
+	fromJson := func(any []byte) [][]Node {
+		var graph [][]Node
+		if err := json.Unmarshal(any, &graph); err != nil {
+			panic(err)
+		}
+		return graph
+	}
+	s.graph = fromJson(gr)
+	s.colors = []int{0, 1, 10} //R,B,Y
+	return s
+}
+
+func (s *Sender) repainting() {
+	s.colors = Shuffle(s.colors)
+}
+
+func (s *Sender) generatedR() {
+	s.repainting()
+	for i := 0; i < len(s.graph); i++ {
+		for j := 0; j < len(s.graph[i]); j++ {
+			color := s.colors[s.graph[i][j].Color]
 			c, _ := rand.Int(rand.Reader, new(big.Int).Exp(big.NewInt(2), big.NewInt(16), nil))
 			r := PlanColorBit(c, color)
-			(*graph)[i][j].R = r
+			s.graph[i][j].R = r
 		}
 	}
 }
 
-func encryptRsaNode(graph *[][]Node) {
-	for i := 0; i < len(*graph); i++ {
-		for j := 0; j < len((*graph)[i]); j++ {
-			(*graph)[i][j].PrivateKey, (*graph)[i][j].PublicKey = signature_rsa.CreateKeys()
+func (s *Sender) encryptRsaNodes() {
+	for i := 0; i < len(s.graph); i++ {
+		for j := 0; j < len(s.graph[i]); j++ {
+			s.graph[i][j].PrivateKey, s.graph[i][j].PublicKey = signature_rsa.CreateKeys()
 		}
 	}
 }
 
-func CreatedZu(graph *[][]Node) [][]EncryptNode {
+func (s Sender) createdZu() [][]EncryptNode {
 	var encryptArrayNodes [][]EncryptNode
-	for i := 0; i < len(*graph); i++ {
+	for i := 0; i < len(s.graph); i++ {
 		var encryptNodes []EncryptNode
-		for j := 0; j < len((*graph)[i]); j++ {
+		for j := 0; j < len(s.graph[i]); j++ {
 			encryptNodes = append(encryptNodes, EncryptNode{
-				N:    (*graph)[i][j].PublicKey.N,
-				D:    (*graph)[i][j].PublicKey.D,
-				Z:    new(big.Int).Exp((*graph)[i][j].R, (*graph)[i][j].PublicKey.D, (*graph)[i][j].PublicKey.N),
-				Edge: (*graph)[i][j].Edge,
+				N:    s.graph[i][j].PublicKey.N,
+				D:    s.graph[i][j].PublicKey.D,
+				Z:    new(big.Int).Exp(s.graph[i][j].R, s.graph[i][j].PublicKey.D, s.graph[i][j].PublicKey.N),
+				Edge: s.graph[i][j].Edge,
 			})
 		}
 		encryptArrayNodes = append(encryptArrayNodes, encryptNodes)
@@ -69,22 +94,27 @@ func CreatedZu(graph *[][]Node) [][]EncryptNode {
 	return encryptArrayNodes
 }
 
-func getDecryptKey(graph [][]Node, edge int) (*big.Int, *big.Int) {
-	nodes := graph[edge]
+func (s Sender) getDecryptKey(edge int) (*big.Int, *big.Int) {
+	nodes := s.graph[edge]
 	return nodes[0].PrivateKey.C, nodes[1].PrivateKey.C
 }
 
-//========== func BOB ===========
-
-func getRandomEdge(arr []int) int {
-	return rand_math.Intn(len(arr))
-	//arr[:len(arr) - 1]
+type Receiver struct {
+	edgesArr     []int
+	encryptNodes [][]EncryptNode
 }
 
-func getRandEdge(arr *[]int) int {
-	edges := Shuffle(*arr)
+func (r *Receiver) init(size int) *Receiver {
+	for i := 0; i < size; i++ {
+		r.edgesArr = append(r.edgesArr, i)
+	}
+	return r
+}
+
+func (r *Receiver) getRandEdge() int {
+	edges := Shuffle(r.edgesArr)
 	edge := edges[0]
-	*arr = edges[1:]
+	r.edgesArr = edges[1:]
 	return edge
 }
 
@@ -102,8 +132,8 @@ func getColorFromR(r *big.Int) int {
 	}
 }
 
-func checkColors(encryptNodes [][]EncryptNode, edge int, c1 *big.Int, c2 *big.Int) {
-	u := encryptNodes[edge]
+func (r *Receiver) checkColors(edge int, c1 *big.Int, c2 *big.Int) {
+	u := r.encryptNodes[edge]
 	u1 := u[0]
 	IZu1 := new(big.Int).Exp(u1.Z, c1, u1.N)
 	u2 := u[1]
@@ -116,7 +146,27 @@ func checkColors(encryptNodes [][]EncryptNode, edge int, c1 *big.Int, c2 *big.In
 	println(color1 != color2)
 }
 
+func (r *Receiver) updateEncryptNodes(encryptNodes [][]EncryptNode) {
+	r.encryptNodes = encryptNodes
+}
+
 func Start() {
+	sender := new(Sender).init()
+	receiver := new(Receiver).init(len(sender.graph))
+
+	for len(receiver.edgesArr) > 0 {
+		sender.generatedR()
+		sender.encryptRsaNodes()
+		receiver.updateEncryptNodes(sender.createdZu())
+
+		edge := receiver.getRandEdge()
+		print("[" + strconv.Itoa(edge) + "]: ")
+		c1, c2 := sender.getDecryptKey(edge)
+		receiver.checkColors(edge, c1, c2)
+	}
+}
+
+func CreatedGraph() {
 	graph := [][]Node{
 		{Node{
 			Edge:       0,
@@ -210,19 +260,9 @@ func Start() {
 			PublicKey:  nil,
 		}},
 	}
-	colorArr := []int{0, 1, 10} //R,B,Y
-	generatedR(&graph, Shuffle(colorArr))
-	encryptRsaNode(&graph)
-	encryptNodes := CreatedZu(&graph)
-	//edge := getRandomEdge([]int{0, 1, 2, 3, 4, 5, 6})
-	//c1, c2 := getDecryptKey(graph, edge)
-	//checkColors(encryptNodes, edge, c1, c2)
-
-	edgeArr := []int{0, 1, 2, 3, 4, 5, 6}
-	for len(edgeArr) > 0 {
-		edge := getRandEdge(&edgeArr)
-		print("[" + strconv.Itoa(edge) + "]: ")
-		c1, c2 := getDecryptKey(graph, edge)
-		checkColors(encryptNodes, edge, c1, c2)
+	toJson := func(any interface{}) []byte {
+		bytes, _ := json.Marshal(any)
+		return bytes
 	}
+	_ = ioutil.WriteFile("graph.json", toJson(graph), os.ModePerm)
 }

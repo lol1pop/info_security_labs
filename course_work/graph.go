@@ -6,11 +6,11 @@ import (
 )
 
 type Node struct {
-	Edge       int
-	Color      int
-	R          *big.Int
-	PrivateKey *key.PrivateKey
-	PublicKey  *key.PublicKey
+	Edge       int             `json:"edge"`
+	Color      int             `json:"color"`
+	R          *big.Int        `json:"r,omitempty"`
+	PrivateKey *key.PrivateKey `json:"private_key,omitempty"`
+	PublicKey  *key.PublicKey  `json:"public_key,omitempty"`
 }
 
 type Edge struct {
@@ -20,8 +20,8 @@ type Edge struct {
 }
 
 type EncryptNode struct {
-	N    *big.Int
-	D    *big.Int
-	Z    *big.Int
-	Edge int
+	N    *big.Int `json:"n"`
+	D    *big.Int `json:"d"`
+	Z    *big.Int `json:"z"`
+	Edge int      `json:"edge"`
 }
